@@ -1,12 +1,23 @@
+# Dependencias y builds
 node_modules/
+.next/
+out/
+build/
 dist/
-.output/
 .vercel/
+
+# Entorno: nunca subir secretos (usa las variables del proyecto en Vercel)
 .env
 .env.*
+!.env.example
+
+# Base de datos local de desarrollo (scripts/dev.mjs)
+.pgdata/
+
+# Logs y utilidades
 *.log
 screenshots/
 artifacts/
-.grok/
 tmp/
 .DS_Store
+*.tsbuildinfo

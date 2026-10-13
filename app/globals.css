@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  min-height: 100dvh;
+  background:
+    radial-gradient(1100px 620px at 8% -8%, rgba(99, 102, 241, 0.28), transparent 60%),
+    radial-gradient(900px 560px at 100% 0%, rgba(16, 185, 129, 0.16), transparent 60%),
+    #020617;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+button,
+[role="button"] {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+:focus-visible {
+  outline: 2px solid #818cf8;
+  outline-offset: 2px;
+}
+
+select option {
+  background: #0f172a;
+  color: #e2e8f0;
+}

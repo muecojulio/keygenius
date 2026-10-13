@@ -1,11 +1,13 @@
 #!/bin/sh
-cd /workspace
+# Arranque de la vista previa: idempotente y no bloqueante.
+# Si ya responde en 8080 no hace nada; si no, lanza `npm run dev` en segundo plano.
+cd "$(dirname "$0")" || exit 0
 if curl -sf -o /dev/null --max-time 1 http://127.0.0.1:8080/; then
   exit 0
 fi
-npm run dev > /tmp/keygenius-dev.log 2>&1 &
+nohup npm run dev > /tmp/keygenius-dev.log 2>&1 &
 i=0
-while [ "$i" -lt 40 ]; do
+while [ "$i" -lt 120 ]; do
   if curl -sf -o /dev/null --max-time 1 http://127.0.0.1:8080/; then
     exit 0
   fi
