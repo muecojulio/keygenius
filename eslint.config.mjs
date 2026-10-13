@@ -1,47 +1,17 @@
-import js from "@eslint/js";
-import prettier from "eslint-config-prettier";
-import reactHooks from "eslint-plugin-react-hooks";
-import reactRefresh from "eslint-plugin-react-refresh";
-import globals from "globals";
-import tseslint from "typescript-eslint";
+import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
+import nextTypescript from "eslint-config-next/typescript";
 
-/** Flat ESLint config for the TanStack Start app-builder template. */
-export default tseslint.config(
+const config = [
   {
-    ignores: [
-      "dist/**",
-      ".output/**",
-      ".vercel/**",
-      ".nitro/**",
-      "node_modules/**",
-      "src/routeTree.gen.ts",
-    ],
+    ignores: [".next/**", "node_modules/**", "server/**", "public/**", "scripts/grok-pwa*"],
   },
-  js.configs.recommended,
-  ...tseslint.configs.recommended,
+  ...nextCoreWebVitals,
+  ...nextTypescript,
   {
-    files: ["**/*.{ts,tsx,js,jsx,mjs,cjs}"],
-    languageOptions: {
-      ecmaVersion: 2022,
-      globals: { ...globals.browser, ...globals.node },
-    },
-    plugins: {
-      "react-hooks": reactHooks,
-      "react-refresh": reactRefresh,
-    },
     rules: {
-      ...reactHooks.configs.recommended.rules,
-      "react-refresh/only-export-components": [
-        "warn",
-        { allowConstantExport: true },
-      ],
-      "@typescript-eslint/no-unused-vars": [
-        "warn",
-        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
-      ],
-      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
     },
   },
-  // Disable rules that conflict with Prettier formatting.
-  prettier,
-);
+];
+
+export default config;
