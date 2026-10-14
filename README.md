@@ -233,7 +233,7 @@ públicos, y todo el texto y la implementación son originales. Los repositorios
 guía­ron el diseño, con su licencia:
 
 - [license-key-manager / tabloy keygate](https://github.com/tabloy/keygate) (AGPL-3.0) — nomenclatura y flujo de estados de licencia.
-- [keygen-sh/keygen-api](https://github.com/keygen-sh/keygen-api) (MIT/AGPL según carpeta) — concepto de vincular la licencia a un equipo.
+- [keygen-sh/keygen-api](https://github.com/keygen-sh/keygen-api) (licencia propia del proyecto) — concepto de vincular la licencia a un equipo.
 - [WAI-ARIA Authoring Practices](https://www.w3.org/WAI/ARIA/apg/) — semántica de pestañas, combobox, switch y diálogos.
 - [radix-ui/primitives](https://github.com/radix-ui/primitives) (MIT) y [chakra-ui/ark](https://github.com/chakra-ui/ark) (MIT) — patrones de interacción accesible (no se instalaron dependencias).
 - [emilkowalski/sonner](https://github.com/emilkowalski/sonner) (MIT) — comportamiento de los avisos (pausa, pila, cierre).
