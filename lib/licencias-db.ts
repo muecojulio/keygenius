@@ -1,4 +1,5 @@
 import "server-only";
+import { memoizar } from "@/lib/cache";
 import { consulta } from "@/lib/db";
 import { EJEMPLOS_LICENCIAS } from "@/lib/demo";
 import {
@@ -23,8 +24,31 @@ export type Licencia = {
   fecha_expiracion: Date | null;
 };
 
+export type ListadoPanel = {
+  licencias: LicenciaVista[];
+  /** Momento en que se produjo el listado (estable mientras la caché lo sirva). */
+  generadoEn: string;
+};
+
 const COLUMNAS =
   "id, nombre_app, clave, dispositivo_id, estado, fecha_creacion, fecha_activacion, fecha_expiracion";
+
+/**
+ * Caché del listado del panel.
+ *
+ * El panel se refresca solo cada 5 s y puede haber varias sesiones abiertas: con
+ * esta ventana, N peticiones simultáneas comparten una única consulta y las
+ * peticiones repetidas se resuelven sin tocar Postgres. Cualquier escritura
+ * invalida la entrada, así que la vista nunca muestra datos anteriores a un
+ * cambio hecho desde el panel.
+ */
+const TTL_LISTADO_MS = 2_500;
+const cacheListado = memoizar<ListadoPanel>({ ttlMs: TTL_LISTADO_MS, maxEntradas: 4 });
+
+/** Deja el listado cacheado fuera de juego tras una escritura. */
+export function invalidarCacheLicencias(): void {
+  cacheListado.invalidar();
+}
 
 function aFila(raw: Record<string, unknown>): Licencia {
   const estado = raw.estado;
@@ -67,16 +91,41 @@ function esColision(err: unknown): boolean {
   return typeof err === "object" && err !== null && (err as { code?: unknown }).code === "23505";
 }
 
-/** Bloquea las claves activas cuyo vencimiento ya pasó y devuelve el listado completo. */
-export async function listarLicencias(ahora: Date = new Date()): Promise<LicenciaVista[]> {
-  await consulta(
-    "update licencias set estado = 'BLOQUEADA' where estado = 'ACTIVA' and fecha_expiracion <= $1",
+/**
+ * Bloquea las claves activas cuyo vencimiento ya pasó y devuelve el listado
+ * completo con los días consumidos.
+ *
+ * `deCache` indica si la respuesta vino de la caché en memoria (se expone en la
+ * cabecera `x-kg-cache` para poder observar el efecto sin adivinar).
+ */
+export async function listarLicencias(
+  ahora: Date = new Date(),
+): Promise<ListadoPanel & { deCache: boolean }> {
+  const { valor, deCache } = await cacheListado.obtener("panel", async () => {
+    await consulta(
+      "update licencias set estado = 'BLOQUEADA' where estado = 'ACTIVA' and fecha_expiracion <= $1",
+      [ahora],
+    );
+    const filas = await consulta(
+      `select ${COLUMNAS} from licencias order by fecha_creacion desc, id desc limit 1000`,
+    );
+    return {
+      licencias: filas.map((raw) => aVista(aFila(raw), ahora)),
+      generadoEn: new Date().toISOString(),
+    };
+  });
+  return { ...valor, deCache };
+}
+
+/** Aplica el cierre por vencimiento fuera del listado (tras una validación). */
+async function cerrarVencidas(ahora: Date): Promise<number> {
+  const filas = await consulta<{ id: number }>(
+    `update licencias set estado = 'BLOQUEADA'
+     where estado = 'ACTIVA' and fecha_expiracion <= $1
+     returning id`,
     [ahora],
   );
-  const filas = await consulta(
-    `select ${COLUMNAS} from licencias order by fecha_creacion desc, id desc limit 1000`,
-  );
-  return filas.map((raw) => aVista(aFila(raw), ahora));
+  return filas.length;
 }
 
 /** Crea claves nuevas en estado DISPONIBLE. Reintenta si un serial choca (muy improbable). */
@@ -100,6 +149,7 @@ export async function generarLicencias(nombreApp: string, cantidad: number): Pro
     if (!fila) throw new Error("No se pudo generar una clave única.");
     creadas.push(fila);
   }
+  invalidarCacheLicencias();
   return creadas;
 }
 
@@ -109,6 +159,7 @@ export async function bloquearLicencia(id: number, ahora: Date = new Date()): Pr
     `update licencias set estado = 'BLOQUEADA' where id = $1 returning ${COLUMNAS}`,
     [id],
   );
+  invalidarCacheLicencias();
   return filas[0] ? aVista(aFila(filas[0]), ahora) : null;
 }
 
@@ -134,8 +185,12 @@ export async function validarLicencia(
      limit 1`,
     [entrada.clave, entrada.nombre_app],
   );
-  if (!encontradas[0]) return { encontrada: false, validacion: validacionNoExiste() };
+  if (!encontradas[0]) {
+    await cerrarVencidas(ahora);
+    return { encontrada: false, validacion: validacionNoExiste() };
+  }
   let lic = aFila(encontradas[0]);
+  let cambio = false;
 
   if (lic.estado === "DISPONIBLE") {
     const { activacion, expiracion } = fechasActivacion(ahora);
@@ -149,6 +204,7 @@ export async function validarLicencia(
     const recargada = activadas[0] ? aFila(activadas[0]) : await recargar(lic.id);
     if (!recargada) return { encontrada: false, validacion: validacionNoExiste() };
     lic = recargada;
+    cambio = true;
   }
 
   if (lic.estado === "ACTIVA" && medirLicencia(lic, ahora).vencida) {
@@ -156,8 +212,11 @@ export async function validarLicencia(
       lic.id,
     ]);
     lic = { ...lic, estado: "BLOQUEADA" };
+    cambio = true;
   }
 
+  // Solo se invalida si algo cambió: validar una licencia sana es lectura pura.
+  if (cambio) invalidarCacheLicencias();
   return { encontrada: true, validacion: evaluarAcceso(lic, entrada.dispositivo_id, ahora) };
 }
 
@@ -177,5 +236,6 @@ export async function precargarEjemplos(ahora: Date = new Date()): Promise<{ ins
     );
     if (filas[0]) insertadas += 1;
   }
+  invalidarCacheLicencias();
   return { insertadas, existentes: EJEMPLOS_LICENCIAS.length - insertadas };
 }
