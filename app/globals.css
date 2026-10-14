@@ -1,16 +1,67 @@
 @import "tailwindcss";
 
+/*
+  KeyGenius · sistema visual e interacciones
+  ------------------------------------------
+  Tokens, fondo "vivo", utilidades de movimiento y reglas de accesibilidad.
+  Todo el movimiento es breve, con propósito y desactivable con
+  `prefers-reduced-motion`.
+*/
+
 :root {
   color-scheme: dark;
+
+  /* Duraciones y curvas: una sola escala para toda la interfaz. */
+  --dur-1: 120ms; /* respuesta al pulsar */
+  --dur-2: 180ms; /* hover, foco, chips */
+  --dur-3: 240ms; /* paneles y pestañas */
+  --curva-salida: cubic-bezier(0.22, 1, 0.36, 1);
+  --curva-entrada: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Identidad: índigo → violeta con acento esmeralda sobre slate profundo. */
+  --acento: #818cf8;
+  --acento-2: #34d399;
+  --superficie: 2 6 23;
+}
+
+*,
+*::before,
+*::after {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
+  scrollbar-gutter: stable;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   min-height: 100dvh;
-  background:
-    radial-gradient(1100px 620px at 8% -8%, rgba(99, 102, 241, 0.28), transparent 60%),
-    radial-gradient(900px 560px at 100% 0%, rgba(16, 185, 129, 0.16), transparent 60%),
-    #020617;
+  max-width: 100%;
+  overflow-x: clip;
+  background-color: #020617;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+code,
+pre,
+kbd,
+.font-mono {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+::selection {
+  background: rgb(129 140 248 / 0.35);
+  color: #f8fafc;
+}
+
+/* ── Foco visible, siempre y sin depender del color del fondo ───────────── */
+:focus-visible {
+  outline: 2px solid #c7d2fe;
+  outline-offset: 2px;
+  border-radius: 0.5rem;
 }
 
 button,
@@ -18,16 +69,432 @@ button,
   cursor: pointer;
 }
 
-button:disabled {
+button:disabled,
+[aria-disabled="true"] {
   cursor: not-allowed;
-}
-
-:focus-visible {
-  outline: 2px solid #818cf8;
-  outline-offset: 2px;
 }
 
 select option {
   background: #0f172a;
   color: #e2e8f0;
+}
+
+/* ── Fondo vivo: aurora + malla de puntos ──────────────────────────────── */
+.fondo-vivo {
+  position: fixed;
+  inset: 0;
+  z-index: -10;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.fondo-vivo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgb(148 163 184 / 0.16) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(115% 80% at 50% 0%, #000 20%, transparent 72%);
+}
+
+.mancha {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: 0.55;
+  will-change: transform;
+  animation: flotar 26s var(--curva-entrada) infinite alternate;
+}
+
+.mancha--indigo {
+  top: -14rem;
+  left: -10rem;
+  width: 34rem;
+  height: 34rem;
+  background: radial-gradient(circle at 30% 30%, rgb(99 102 241 / 0.75), transparent 70%);
+}
+
+.mancha--esmeralda {
+  top: -6rem;
+  right: -12rem;
+  width: 30rem;
+  height: 30rem;
+  background: radial-gradient(circle at 60% 40%, rgb(16 185 129 / 0.5), transparent 70%);
+  animation-duration: 32s;
+  animation-delay: -6s;
+}
+
+.mancha--violeta {
+  bottom: -16rem;
+  left: 35%;
+  width: 32rem;
+  height: 32rem;
+  background: radial-gradient(circle at 50% 50%, rgb(139 92 246 / 0.42), transparent 70%);
+  animation-duration: 38s;
+  animation-delay: -14s;
+}
+
+@keyframes flotar {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(3%, -4%, 0) scale(1.1);
+  }
+}
+
+/* ── Utilidades ───────────────────────────────────────────────────────── */
+
+/* Oculta la barra de desplazamiento sin quitar la capacidad de desplazar. */
+.sin-barra {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.sin-barra::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Barra fina y discreta para el contenedor de la tabla. */
+.barra-fina {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(148 163 184 / 0.35) transparent;
+}
+.barra-fina::-webkit-scrollbar {
+  height: 10px;
+}
+.barra-fina::-webkit-scrollbar-thumb {
+  background: rgb(148 163 184 / 0.3);
+  border: 3px solid transparent;
+  border-radius: 9999px;
+  background-clip: content-box;
+}
+
+/* Carriles horizontales: scroll nativo, momentum y scroll-snap moderado. */
+.carril {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: 1rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.carril::-webkit-scrollbar {
+  display: none;
+}
+.carril > * {
+  scroll-snap-align: start;
+}
+
+@media (min-width: 1024px) {
+  /* En pantallas grandes el carril deja de aportar: se convierte en cuadrícula. */
+  .carril--rejilla {
+    display: grid;
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+}
+
+/* Zona táctil cómoda y respuesta sin retardo. */
+.tacto {
+  touch-action: manipulation;
+}
+
+/* Solo el eje horizontal se gestiona a mano; el vertical lo controla el navegador. */
+.deslizable {
+  touch-action: pan-y;
+}
+
+/* Entrada escalonada de tarjetas. */
+.entrada {
+  animation: entrada-arriba 420ms var(--curva-salida) both;
+  animation-delay: var(--retardo, 0ms);
+}
+
+@keyframes entrada-arriba {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Aparición breve de paneles de pestañas. */
+.panel-entra[data-direccion="siguiente"] {
+  animation: panel-siguiente var(--dur-3) var(--curva-salida) both;
+}
+.panel-entra[data-direccion="anterior"] {
+  animation: panel-anterior var(--dur-3) var(--curva-salida) both;
+}
+
+@keyframes panel-siguiente {
+  from {
+    opacity: 0;
+    transform: translate3d(14px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes panel-anterior {
+  from {
+    opacity: 0;
+    transform: translate3d(-14px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Indicador de la pestaña activa: se desliza, no salta. */
+.indicador-pestana {
+  transition:
+    transform var(--dur-3) var(--curva-salida),
+    width var(--dur-3) var(--curva-salida);
+}
+
+/* Confirmación de copiado: pequeño latido. */
+.latido {
+  animation: latido 420ms var(--curva-salida);
+}
+
+@keyframes latido {
+  0% {
+    transform: scale(0.9);
+  }
+  45% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Error de formulario: sacudida muy discreta. */
+.sacudida {
+  animation: sacudida 320ms var(--curva-entrada);
+}
+
+@keyframes sacudida {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  25% {
+    transform: translate3d(-3px, 0, 0);
+  }
+  75% {
+    transform: translate3d(3px, 0, 0);
+  }
+}
+
+/* Aparición de avisos (toasts). */
+.aviso-entra {
+  animation: aviso-entra var(--dur-3) var(--curva-salida) both;
+}
+.aviso-sale {
+  animation: aviso-sale var(--dur-2) var(--curva-entrada) both;
+}
+
+@keyframes aviso-entra {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes aviso-sale {
+  to {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.98);
+  }
+}
+
+/* Barra de progreso del cierre automático de un aviso. */
+.aviso-progreso {
+  animation-name: progreso;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+  transform-origin: left center;
+}
+
+@keyframes progreso {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+/* Esqueletos de carga. */
+.esqueleto {
+  position: relative;
+  overflow: hidden;
+  background: rgb(148 163 184 / 0.12);
+}
+.esqueleto::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(226 232 240 / 0.12), transparent);
+  animation: brillo 1.6s var(--curva-entrada) infinite;
+}
+
+@keyframes brillo {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* ── Superficies ──────────────────────────────────────────────────────── */
+
+.tarjeta-viva {
+  position: relative;
+  transition:
+    transform var(--dur-2) var(--curva-salida),
+    box-shadow var(--dur-2) var(--curva-salida),
+    border-color var(--dur-2) var(--curva-salida);
+}
+
+.tarjeta-viva::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(140deg, rgb(255 255 255 / 0.22), rgb(255 255 255 / 0.02) 45%, rgb(129 140 248 / 0.25));
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+@media (hover: hover) {
+  .tarjeta-viva--interactiva:hover {
+    transform: translate3d(0, -2px, 0);
+    box-shadow: 0 18px 40px -22px rgb(79 70 229 / 0.65);
+  }
+  .tarjeta-viva--interactiva:hover::before {
+    opacity: 1;
+  }
+}
+
+.tarjeta-activa {
+  box-shadow:
+    0 0 0 1px rgb(199 210 254 / 0.55),
+    0 18px 40px -24px rgb(79 70 229 / 0.7);
+}
+
+.texto-degradado {
+  background: linear-gradient(96deg, #e0e7ff, #a5b4fc 45%, #6ee7b7);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Punto "en vivo". */
+.punto-vivo {
+  position: relative;
+  display: inline-flex;
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  border-radius: 9999px;
+  background: #34d399;
+}
+.punto-vivo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: inherit;
+  animation: ondas 2.4s var(--curva-salida) infinite;
+}
+
+@keyframes ondas {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  70%,
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+/* Enlace "Saltar al contenido". */
+.saltar {
+  position: absolute;
+  left: 1rem;
+  top: -4rem;
+  z-index: 60;
+  border-radius: 0.75rem;
+  background: #e0e7ff;
+  color: #1e1b4b;
+  padding: 0.6rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: top var(--dur-2) var(--curva-salida);
+}
+.saltar:focus-visible {
+  top: 1rem;
+}
+
+/* ── Movimiento reducido ──────────────────────────────────────────────────
+   Se conserva la información; se elimina el desplazamiento decorativo. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+
+  .mancha {
+    animation: none !important;
+  }
+
+  .entrada,
+  .panel-entra[data-direccion],
+  .aviso-entra,
+  .aviso-sale,
+  .latido,
+  .sacudida,
+  .esqueleto::after,
+  .punto-vivo::after {
+    animation: none !important;
+  }
+
+  .indicador-pestana {
+    transition: none !important;
+  }
+
+  .tarjeta-viva {
+    transition: none !important;
+  }
+
+  @media (hover: hover) {
+    .tarjeta-viva--interactiva:hover {
+      transform: none !important;
+    }
+  }
 }
