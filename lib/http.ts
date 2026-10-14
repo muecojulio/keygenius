@@ -6,15 +6,32 @@ export const LIMITE_CUERPO = 12_000;
 export function json(data: unknown, status = 200, headers: Record<string, string> = {}): Response {
   return Response.json(data, {
     status,
-    headers: { "cache-control": "no-store", ...headers },
+    headers: { "cache-control": "no-store, max-age=0", ...headers },
   });
 }
 
-/** Lee un cuerpo JSON como objeto, con límite de tamaño. */
+/**
+ * Lee un cuerpo JSON como objeto.
+ *
+ * Endurecido: límite de tamaño (cabecera declarada y contenido real), tipo de
+ * contenido obligatorio cuando hay cuerpo (un formulario HTML no puede enviar
+ * `application/json`) y nada de arrays o escalares sueltos.
+ */
 export async function leerJson(request: Request): Promise<Record<string, unknown>> {
+  const declarado = Number(request.headers.get("content-length") ?? "");
+  if (Number.isFinite(declarado) && declarado > LIMITE_CUERPO) {
+    throw new HttpError(413, "La solicitud es demasiado grande.");
+  }
+
   const texto = await request.text();
-  if (texto.length > LIMITE_CUERPO) throw new HttpError(413, "La solicitud es demasiado grande.");
   if (!texto.trim()) return {};
+  if (texto.length > LIMITE_CUERPO) throw new HttpError(413, "La solicitud es demasiado grande.");
+
+  const tipo = (request.headers.get("content-type") ?? "").toLowerCase();
+  if (!tipo.includes("application/json")) {
+    throw new HttpError(415, "El cuerpo debe enviarse como application/json.");
+  }
+
   let valor: unknown;
   try {
     valor = JSON.parse(texto);
@@ -28,8 +45,9 @@ export async function leerJson(request: Request): Promise<Record<string, unknown
 }
 
 /**
- * Convierte cualquier error en respuesta. Nunca devuelve detalles internos ni valores
- * de variables de entorno; solo registra en el servidor lo necesario para depurar.
+ * Convierte cualquier error en respuesta. Nunca devuelve detalles internos ni
+ * valores de variables de entorno; solo registra en el servidor lo necesario
+ * para depurar.
  */
 export function respuestaError(err: unknown, contexto: string, cabeceras?: Record<string, string>): Response {
   if (err instanceof HttpError) return json({ error: err.message }, err.status, cabeceras);

@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint app components lib tests scripts/dev.mjs next.config.ts vitest.config.ts",
     "test": "vitest run",
-    "check": "npm run typecheck && npm run lint && npm run test && npm run build"
+    "check": "npm run typecheck && npm run lint && npm run test && npm run build",
+    "indices": "node scripts/analizar-indices.mjs"
   },
   "dependencies": {
     "next": "^16.4.0",
@@ -34,6 +35,6 @@
     "postcss": "^8.5.0",
     "tailwindcss": "^4.1.0",
     "typescript": "^5.9.0",
-    "vitest": "^3.2.0"
+    "vitest": "^4.1.11"
   }
 }

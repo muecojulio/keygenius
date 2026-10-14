@@ -1,9 +1,12 @@
-import { esAdmin } from "@/lib/admin";
-import { generarLicencias } from "@/lib/licencias-db";
+import { esAdmin, mutacionAutorizada } from "@/lib/admin";
 import { json, leerJson, respuestaError } from "@/lib/http";
+import { generarLicencias } from "@/lib/licencias-db";
+import { dentroDelCupo, ipCliente } from "@/lib/limite";
 import { limpiarCantidad, limpiarNombreApp } from "@/lib/validaciones";
 
 export const dynamic = "force-dynamic";
+
+const MAX_POR_MINUTO = 30;
 
 /**
  * Genera claves nuevas en estado DISPONIBLE.
@@ -13,6 +16,11 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   try {
     if (!esAdmin(request)) return json({ error: "No autorizado." }, 401);
+    if (!mutacionAutorizada(request)) return json({ error: "Origen no permitido." }, 403);
+    if (!dentroDelCupo(`generar:${ipCliente(request)}`, MAX_POR_MINUTO, 60_000)) {
+      return json({ error: "Demasiadas solicitudes. Espera un momento." }, 429, { "retry-after": "60" });
+    }
+
     const body = await leerJson(request);
     const nombre = limpiarNombreApp(body.nombre_app);
     if (!nombre) {

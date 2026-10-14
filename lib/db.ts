@@ -2,8 +2,25 @@ import "server-only";
 import { Pool, type QueryResultRow } from "pg";
 import { ConfigError } from "@/lib/errores";
 
-// Esquema idempotente: se aplica una vez por instancia, protegido con un lock de Postgres
-// para que varias instancias que arrancan a la vez no compitan al crear la tabla.
+// Esquema idempotente: se aplica en la primera consulta de cada instancia,
+// protegido con un lock de Postgres para que varias instancias que arrancan a
+// la vez no compitan al crear la tabla ni los índices.
+//
+// ── Índices: uno por consulta real, ni uno más ────────────────────────────────
+// Cada índice cuesta espacio y escritura; aquí solo quedan los que responden a
+// una consulta del código:
+//
+//   buscar clave        → `where clave = $1`              → licencias_clave_uidx (único)
+//   insertar            → `on conflict (clave)`            → licencias_clave_uidx
+//   listar el panel     → `order by fecha_creacion desc, id desc limit 1000`
+//                                                          → licencias_creacion_idx
+//   cierre por vencer   → `where estado = 'ACTIVA' and fecha_expiracion <= $1`
+//                                                          → licencias_vencen_idx (parcial)
+//
+// Se descartan `estado` y `lower(nombre_app)` sueltos: ninguna consulta filtra
+// por esas columnas en SQL (los filtros 1 y 2 de la vista se resuelven en el
+// cliente sobre las 1000 filas más recientes). Si algún día la búsqueda pasa al
+// servidor, lo correcto es un GIN con `pg_trgm` sobre `lower(nombre_app)`.
 const ESQUEMA = `
 create table if not exists licencias (
   id                bigserial primary key,
@@ -19,8 +36,10 @@ create table if not exists licencias (
   constraint licencias_nombre_chk check (char_length(nombre_app) between 2 and 80)
 );
 create unique index if not exists licencias_clave_uidx on licencias (clave);
-create index if not exists licencias_estado_idx on licencias (estado);
-create index if not exists licencias_app_idx on licencias (lower(nombre_app));
+create index if not exists licencias_creacion_idx on licencias (fecha_creacion desc, id desc);
+create index if not exists licencias_vencen_idx on licencias (fecha_expiracion) where estado = 'ACTIVA';
+drop index if exists licencias_estado_idx;
+drop index if exists licencias_app_idx;
 `;
 
 const globalRef = globalThis as typeof globalThis & {
