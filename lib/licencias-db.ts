@@ -163,6 +163,20 @@ export async function bloquearLicencia(id: number, ahora: Date = new Date()): Pr
   return filas[0] ? aVista(aFila(filas[0]), ahora) : null;
 }
 
+/**
+ * Elimina una licencia de forma definitiva. Devuelve `null` si esa fila ya no
+ * existe (o nunca existió).
+ *
+ * El bloqueo conserva el histórico; esto lo borra, así que es la operación para
+ * quitar claves de prueba o registros cargados por error. Una clave eliminada
+ * deja de validarse al instante: `validarLicencia` responde `NO_EXISTE`.
+ */
+export async function eliminarLicencia(id: number, ahora: Date = new Date()): Promise<LicenciaVista | null> {
+  const filas = await consulta(`delete from licencias where id = $1 returning ${COLUMNAS}`, [id]);
+  invalidarCacheLicencias();
+  return filas[0] ? aVista(aFila(filas[0]), ahora) : null;
+}
+
 async function recargar(id: number): Promise<Licencia | null> {
   const filas = await consulta(`select ${COLUMNAS} from licencias where id = $1`, [id]);
   return filas[0] ? aFila(filas[0]) : null;

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { limpiarCantidad, limpiarClave, limpiarDispositivo, limpiarNombreApp } from "@/lib/validaciones";
+import {
+  limpiarCantidad,
+  limpiarClave,
+  limpiarDispositivo,
+  limpiarIdLicencia,
+  limpiarNombreApp,
+} from "@/lib/validaciones";
 import { claveCoincide, crearToken, tokenValido, DURACION_SESION_MS } from "@/lib/sesion";
 
 describe("limpieza de entradas", () => {
@@ -20,6 +26,21 @@ describe("limpieza de entradas", () => {
     expect(limpiarDispositivo("pc-01")).toBe("pc-01");
     expect(limpiarDispositivo("abc")).toBeNull();
     expect(limpiarDispositivo("")).toBeNull();
+  });
+
+  it("el identificador de licencia solo acepta enteros positivos", () => {
+    expect(limpiarIdLicencia(12)).toBe(12);
+    expect(limpiarIdLicencia("12")).toBe(12);
+    expect(limpiarIdLicencia(1)).toBe(1);
+    expect(limpiarIdLicencia(0)).toBeNull();
+    expect(limpiarIdLicencia(-3)).toBeNull();
+    expect(limpiarIdLicencia(2.5)).toBeNull();
+    expect(limpiarIdLicencia("abc")).toBeNull();
+    expect(limpiarIdLicencia("")).toBeNull();
+    expect(limpiarIdLicencia(null)).toBeNull();
+    expect(limpiarIdLicencia(undefined)).toBeNull();
+    expect(limpiarIdLicencia(true)).toBeNull();
+    expect(limpiarIdLicencia({ id: 4 })).toBeNull();
   });
 
   it("la cantidad va de 1 a 10 y por defecto es 1", () => {

@@ -45,6 +45,8 @@ export function PanelAdmin() {
   const [filtros, setFiltros] = useState<FiltrosLicencias>(FILTROS_INICIALES);
   const [porBloquear, setPorBloquear] = useState<LicenciaVista | null>(null);
   const [bloqueando, setBloqueando] = useState(false);
+  const [porEliminar, setPorEliminar] = useState<LicenciaVista | null>(null);
+  const [eliminando, setEliminando] = useState(false);
   const [cargandoEjemplos, setCargandoEjemplos] = useState(false);
   const [quitandoEjemplos, setQuitandoEjemplos] = useState(false);
   const [confirmandoQuitarEjemplos, setConfirmandoQuitarEjemplos] = useState(false);
@@ -87,7 +89,7 @@ export function PanelAdmin() {
   }, [refrescar]);
 
   useSondeo(() => void refrescar(true), {
-    activo: automatico && !porBloquear && !confirmandoQuitarEjemplos,
+    activo: automatico && !porBloquear && !porEliminar && !confirmandoQuitarEjemplos,
     intervaloMs: INTERVALO_MS,
   });
 
@@ -208,6 +210,43 @@ export function PanelAdmin() {
       await refrescar(true);
     } finally {
       setBloqueando(false);
+    }
+  }
+
+  /**
+   * Elimina la licencia de la base. El diálogo ya avisó de que no hay vuelta
+   * atrás; aquí solo queda confirmar contra el servidor y refrescar la lista.
+   */
+  async function confirmarEliminacion() {
+    const licencia = porEliminar;
+    if (!licencia) return;
+    setEliminando(true);
+    try {
+      const { ok, status, body } = await pedirJson<{ licencia?: LicenciaVista }>("/api/admin/eliminar", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: licencia.id }),
+      });
+      if (status === 401) {
+        router.refresh();
+        return;
+      }
+      if (!ok) {
+        mostrar({ tipo: "error", texto: "No se pudo eliminar la clave", detalle: body.error });
+        return;
+      }
+      mostrar({
+        tipo: "ok",
+        texto: `Clave ${licencia.clave} eliminada`,
+        detalle:
+          licencia.estado === "ACTIVA"
+            ? "Ya no existe: el equipo pierde el acceso al validarla."
+            : "Ya no está en la base de datos.",
+      });
+      setPorEliminar(null);
+      await refrescar(true);
+    } finally {
+      setEliminando(false);
     }
   }
 
@@ -361,6 +400,7 @@ export function PanelAdmin() {
                 filtros={filtros}
                 onFiltros={setFiltros}
                 onBloquear={(licencia) => setPorBloquear(licencia)}
+                onEliminar={(licencia) => setPorEliminar(licencia)}
                 onCargarEjemplos={() => void cargarEjemplos()}
               />
             );
@@ -547,6 +587,21 @@ export function PanelAdmin() {
         ocupado={bloqueando}
         onConfirmar={() => void confirmarBloqueo()}
         onCancelar={() => setPorBloquear(null)}
+      />
+
+      <DialogoConfirmar
+        abierto={porEliminar !== null}
+        titulo={porEliminar ? `¿Eliminar la clave ${porEliminar.clave}?` : "¿Eliminar la clave?"}
+        descripcion={
+          porEliminar?.estado === "ACTIVA"
+            ? `Es una licencia ACTIVA de «${porEliminar.nombre_app}»: el equipo ${porEliminar.dispositivo_id ?? "vinculado"} pierde el acceso de inmediato. Se borra de la base de datos y no se puede deshacer (a diferencia de bloquear, no queda registro).`
+            : "Se borra de la base de datos y no se puede deshacer (a diferencia de bloquear, no queda registro)."
+        }
+        textoConfirmar="Eliminar definitivamente"
+        textoCancelar="Cancelar"
+        ocupado={eliminando}
+        onConfirmar={() => void confirmarEliminacion()}
+        onCancelar={() => setPorEliminar(null)}
       />
 
       <DialogoConfirmar

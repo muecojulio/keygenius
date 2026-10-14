@@ -47,6 +47,7 @@ export function TablaLicencias({
   filtros,
   onFiltros,
   onBloquear,
+  onEliminar,
   onCargarEjemplos,
 }: {
   licencias: LicenciaVista[];
@@ -54,6 +55,7 @@ export function TablaLicencias({
   filtros: FiltrosLicencias;
   onFiltros: (filtros: FiltrosLicencias) => void;
   onBloquear: (licencia: LicenciaVista) => void;
+  onEliminar: (licencia: LicenciaVista) => void;
   onCargarEjemplos: () => void;
 }) {
   const { mostrar } = useAvisos();
@@ -209,7 +211,7 @@ export function TablaLicencias({
         <>
           {/* Escritorio: tabla completa, con acciones a la vista. */}
           <div className="barra-fina hidden overflow-x-auto lg:block" data-carril="">
-            <table className="w-full min-w-[980px] text-left text-sm">
+            <table className="w-full min-w-[1080px] text-left text-sm">
               <caption className="sr-only">Licencias generadas con su estado y días restantes</caption>
               <thead className="bg-white/[0.03] text-xs uppercase tracking-wider text-slate-400">
                 <tr>
@@ -231,6 +233,7 @@ export function TablaLicencias({
                     copiada={copiada === l.clave}
                     onCopiar={() => void copiar(l.clave)}
                     onBloquear={() => onBloquear(l)}
+                    onEliminar={() => onEliminar(l)}
                   />
                 ))}
               </tbody>
@@ -253,9 +256,14 @@ export function TablaLicencias({
                       <BotonIcono
                         etiqueta={`Bloquear clave ${l.clave}`}
                         icono="bloquear"
-                        variante="peligro"
                         disabled={l.estado === "BLOQUEADA"}
                         onClick={() => onBloquear(l)}
+                      />
+                      <BotonIcono
+                        etiqueta={`Eliminar clave ${l.clave}`}
+                        icono="papelera"
+                        variante="peligro"
+                        onClick={() => onEliminar(l)}
                       />
                     </>
                   }
@@ -276,11 +284,13 @@ function FilaEscritorio({
   copiada,
   onCopiar,
   onBloquear,
+  onEliminar,
 }: {
   licencia: LicenciaVista;
   copiada: boolean;
   onCopiar: () => void;
   onBloquear: () => void;
+  onEliminar: () => void;
 }) {
   const sinActivar = l.diasActiva === null;
   const bloqueable = l.estado !== "BLOQUEADA";
@@ -332,9 +342,16 @@ function FilaEscritorio({
       </td>
       <td className="whitespace-nowrap px-5 py-4 text-slate-300">{formatearFecha(l.fecha_expiracion)}</td>
       <td className="px-5 py-4 text-right">
-        <Boton variante="peligro" disabled={!bloqueable} onClick={onBloquear} className="px-3 py-1.5 text-xs">
-          {bloqueable ? "Bloquear" : "Bloqueada"}
-        </Boton>
+        <span className="inline-flex flex-wrap items-center justify-end gap-2">
+          {/* Bloquear es la acción habitual (conserva el histórico); eliminar va
+              aparte, con el tratamiento de peligro, porque no tiene vuelta atrás. */}
+          <Boton disabled={!bloqueable} onClick={onBloquear} className="px-3 py-1.5 text-xs">
+            {bloqueable ? "Bloquear" : "Bloqueada"}
+          </Boton>
+          <Boton variante="peligro" icono="papelera" onClick={onEliminar} className="px-3 py-1.5 text-xs">
+            Eliminar
+          </Boton>
+        </span>
       </td>
     </tr>
   );

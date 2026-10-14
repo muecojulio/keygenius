@@ -34,3 +34,13 @@ export function limpiarCantidad(value: unknown): number | null {
   if (typeof n !== "number" || !Number.isInteger(n) || n < 1 || n > 10) return null;
   return n;
 }
+
+/**
+ * Identificador de licencia tal como lo envía el panel: entero positivo.
+ * Acepta el número o su forma en texto (`"12"`); cualquier otra cosa es `null`.
+ */
+export function limpiarIdLicencia(value: unknown): number | null {
+  const n = typeof value === "string" ? Number(value) : value;
+  if (typeof n !== "number" || !Number.isInteger(n) || n < 1) return null;
+  return n;
+}
