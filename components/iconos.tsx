@@ -34,7 +34,8 @@ export type NombreIcono =
   | "ojo-tachado"
   | "equipo"
   | "mas"
-  | "menos";
+  | "menos"
+  | "papelera";
 
 const TRAZOS: Record<NombreIcono, ReactNode> = {
   llave: (
@@ -179,6 +180,14 @@ const TRAZOS: Record<NombreIcono, ReactNode> = {
   ),
   mas: <path d="M12 5.5v13M5.5 12h13" />,
   menos: <path d="M5.5 12h13" />,
+  papelera: (
+    <>
+      <path d="M4 6.5h16" />
+      <path d="M9.5 6V4.5A1.5 1.5 0 0 1 11 3h2a1.5 1.5 0 0 1 1.5 1.5V6" />
+      <path d="M6 6.5 7 19a2 2 0 0 0 2 1.9h6A2 2 0 0 0 17 19l1-12.5" />
+      <path d="M10 10.5v6M14 10.5v6" />
+    </>
+  ),
 };
 
 export function Icono({

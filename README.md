@@ -18,7 +18,7 @@ Construido con **Next.js (App Router)**, **Tailwind CSS** y **Vercel Postgres**.
 2. **Crea la base de datos:** Storage → Create → Postgres (Neon). Al conectarla al proyecto, Vercel añade `POSTGRES_URL`.
 3. **Define la clave de administrador:** Settings → Environment Variables → `ADMIN_SECRET_KEY` (mínimo 12 caracteres, aleatoria).
 4. **Despliega.** El esquema de la tabla `licencias` (tabla e índices) se crea solo en la primera petición y es idempotente.
-5. Entra al sitio, inicia sesión con `ADMIN_SECRET_KEY` y pulsa **Cargar ejemplos** para ver el panel con datos.
+5. Entra al sitio, inicia sesión con `ADMIN_SECRET_KEY` y pulsa **Precargar** para ver el panel con datos. El mismo botón pasa a **Quitar precarga** mientras los ejemplos están cargados.
 
 > Si falta `ADMIN_SECRET_KEY` o `POSTGRES_URL`, el panel lo indica sin mostrar valores.
 
@@ -93,6 +93,10 @@ Responde además:
 ### `POST /api/admin/precarga` (admin)
 
 Carga claves de ejemplo (`Demo …`). Es idempotente.
+
+### `DELETE /api/admin/precarga` (admin)
+
+Quita las claves de ejemplo cargadas con la precarga. Solo borra las claves exactas de ejemplo (`APP-DEMO-…`), nunca claves reales. Es idempotente y responde `{ "eliminadas": n }`. Es lo que usa el botón **Precargar** del panel cuando la precarga ya está puesta (pasa a **Quitar precarga**).
 
 ### Sesión del panel
 

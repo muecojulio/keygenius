@@ -188,13 +188,13 @@ export function TablaLicencias({
           </p>
           <p className="max-w-sm text-xs text-slate-400">
             {licencias.length === 0
-              ? "Genera tus primeras claves o carga los ejemplos para ver el panel con datos."
+              ? "Genera tus primeras claves o usa la precarga para ver el panel con datos."
               : "Prueba con otro texto o quita los filtros activos."}
           </p>
           <div className="mt-1 flex flex-wrap justify-center gap-2">
             {licencias.length === 0 ? (
               <Boton variante="primario" icono="chispa" onClick={onCargarEjemplos}>
-                Cargar ejemplos
+                Precargar
               </Boton>
             ) : (
               hayFiltros && (

@@ -1,6 +1,6 @@
 import { esAdmin, mutacionAutorizada } from "@/lib/admin";
 import { json, respuestaError } from "@/lib/http";
-import { precargarEjemplos } from "@/lib/licencias-db";
+import { precargarEjemplos, quitarEjemplos } from "@/lib/licencias-db";
 import { dentroDelCupo, ipCliente } from "@/lib/limite";
 
 export const dynamic = "force-dynamic";
@@ -19,5 +19,20 @@ export async function POST(request: Request) {
     return json(resultado);
   } catch (err) {
     return respuestaError(err, "precarga POST");
+  }
+}
+
+/** Quita las claves de ejemplo cargadas con la precarga. Es seguro repetirla. */
+export async function DELETE(request: Request) {
+  try {
+    if (!esAdmin(request)) return json({ error: "No autorizado." }, 401);
+    if (!mutacionAutorizada(request)) return json({ error: "Origen no permitido." }, 403);
+    if (!dentroDelCupo(`precarga:${ipCliente(request)}`, MAX_POR_MINUTO, 60_000)) {
+      return json({ error: "Demasiadas solicitudes. Espera un momento." }, 429, { "retry-after": "60" });
+    }
+    const resultado = await quitarEjemplos();
+    return json(resultado);
+  } catch (err) {
+    return respuestaError(err, "precarga DELETE");
   }
 }
