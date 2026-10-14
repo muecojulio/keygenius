@@ -15,6 +15,7 @@ import { FILTROS_INICIALES, TablaLicencias, type FiltrosLicencias } from "@/comp
 import { Banner, Boton, Esqueleto, EtiquetaEstado, Tarjeta } from "@/components/ui";
 import { useAvisos } from "@/components/avisos";
 import { copiarTexto, pedirJson } from "@/lib/cliente";
+import { CLAVES_EJEMPLO } from "@/lib/demo";
 import { formatearHora, pluralizar } from "@/lib/formato";
 import { usePreferencia, useSondeo } from "@/lib/hooks";
 import type { LicenciaVista, ResumenLicencias } from "@/lib/tipos";
@@ -45,6 +46,8 @@ export function PanelAdmin() {
   const [porBloquear, setPorBloquear] = useState<LicenciaVista | null>(null);
   const [bloqueando, setBloqueando] = useState(false);
   const [cargandoEjemplos, setCargandoEjemplos] = useState(false);
+  const [quitandoEjemplos, setQuitandoEjemplos] = useState(false);
+  const [confirmandoQuitarEjemplos, setConfirmandoQuitarEjemplos] = useState(false);
   const enCurso = useRef(false);
 
   const refrescar = useCallback(
@@ -83,7 +86,10 @@ export function PanelAdmin() {
     return () => window.clearTimeout(id);
   }, [refrescar]);
 
-  useSondeo(() => void refrescar(true), { activo: automatico && !porBloquear, intervaloMs: INTERVALO_MS });
+  useSondeo(() => void refrescar(true), {
+    activo: automatico && !porBloquear && !confirmandoQuitarEjemplos,
+    intervaloMs: INTERVALO_MS,
+  });
 
   const resumen = useMemo(() => datos?.resumen ?? RESUMEN_VACIO, [datos]);
   const licencias = useMemo(() => datos?.licencias ?? [], [datos]);
@@ -100,6 +106,12 @@ export function PanelAdmin() {
   );
 
   const ultimas = useMemo(() => licencias.slice(0, 4), [licencias]);
+
+  // Solo cuentan las claves exactas de la precarga: es lo único que quita el botón.
+  const numeroEjemplos = useMemo(
+    () => licencias.filter((l) => CLAVES_EJEMPLO.includes(l.clave)).length,
+    [licencias],
+  );
 
   const itemsPestanas: PestanaItem[] = [
     { id: "resumen", etiqueta: "Resumen", icono: "barras" },
@@ -137,6 +149,35 @@ export function PanelAdmin() {
       await refrescar(true);
     } finally {
       setCargandoEjemplos(false);
+    }
+  }
+
+  async function quitarEjemplos() {
+    setQuitandoEjemplos(true);
+    try {
+      const { ok, status, body } = await pedirJson<{ eliminadas?: number }>("/api/admin/precarga", {
+        method: "DELETE",
+      });
+      if (status === 401) {
+        router.refresh();
+        return;
+      }
+      if (!ok) {
+        mostrar({ tipo: "error", texto: "No se pudieron quitar los ejemplos", detalle: body.error });
+        return;
+      }
+      mostrar({
+        tipo: "ok",
+        texto: "Precarga eliminada",
+        detalle:
+          (body.eliminadas ?? 0) === 0
+            ? "No quedaba ninguna clave de ejemplo."
+            : `Se quitaron ${pluralizar(body.eliminadas ?? 0, "clave de ejemplo", "claves de ejemplo")}. Las claves reales no se tocaron.`,
+      });
+      setConfirmandoQuitarEjemplos(false);
+      await refrescar(true);
+    } finally {
+      setQuitandoEjemplos(false);
     }
   }
 
@@ -207,12 +248,29 @@ export function PanelAdmin() {
 
         <div className="flex flex-wrap items-center gap-2">
           <Boton
-            variante="primario"
-            icono="chispa"
-            estado={cargandoEjemplos ? "cargando" : "inactivo"}
-            onClick={() => void cargarEjemplos()}
+            variante={numeroEjemplos > 0 ? "secundario" : "primario"}
+            icono={numeroEjemplos > 0 ? "papelera" : "chispa"}
+            estado={cargandoEjemplos || quitandoEjemplos ? "cargando" : "inactivo"}
+            title={
+              numeroEjemplos > 0
+                ? `Quitar la precarga (${pluralizar(numeroEjemplos, "clave de ejemplo", "claves de ejemplo")})`
+                : "Cargar las claves de ejemplo (Demo …)"
+            }
+            onClick={() => {
+              if (numeroEjemplos > 0) {
+                setConfirmandoQuitarEjemplos(true);
+              } else {
+                void cargarEjemplos();
+              }
+            }}
           >
-            {cargandoEjemplos ? "Cargando…" : "Cargar ejemplos"}
+            {cargandoEjemplos
+              ? "Precargando…"
+              : quitandoEjemplos
+                ? "Quitando precarga…"
+                : numeroEjemplos > 0
+                  ? "Quitar precarga"
+                  : "Precargar"}
           </Boton>
           <Boton icono="refrescar" estado={refrescando ? "cargando" : "inactivo"} onClick={() => void refrescar()}>
             {refrescando ? "Actualizando…" : "Actualizar"}
@@ -381,7 +439,7 @@ export function PanelAdmin() {
                   </ul>
                   <p className="mt-4 text-xs text-slate-400">
                     {resumen.total === 0
-                      ? "Sin datos todavía: genera claves o carga los ejemplos."
+                      ? "Sin datos todavía: genera claves o usa la precarga."
                       : `${porcentaje(resumen.activas, resumen.total)}% de las claves está en uso ahora mismo.`}
                   </p>
                 </Tarjeta>
@@ -489,6 +547,17 @@ export function PanelAdmin() {
         ocupado={bloqueando}
         onConfirmar={() => void confirmarBloqueo()}
         onCancelar={() => setPorBloquear(null)}
+      />
+
+      <DialogoConfirmar
+        abierto={confirmandoQuitarEjemplos}
+        titulo="¿Quitar la precarga?"
+        descripcion={`Se eliminarán ${pluralizar(numeroEjemplos, "clave de ejemplo", "claves de ejemplo")} (las «Demo …»). Las claves reales no se tocan. Podrás volver a precargarlas cuando quieras con el mismo botón.`}
+        textoConfirmar="Quitar precarga"
+        textoCancelar="Cancelar"
+        ocupado={quitandoEjemplos}
+        onConfirmar={() => void quitarEjemplos()}
+        onCancelar={() => setConfirmandoQuitarEjemplos(false)}
       />
     </main>
   );

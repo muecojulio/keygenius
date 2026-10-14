@@ -1,7 +1,7 @@
 import "server-only";
 import { memoizar } from "@/lib/cache";
 import { consulta } from "@/lib/db";
-import { EJEMPLOS_LICENCIAS } from "@/lib/demo";
+import { CLAVES_EJEMPLO, EJEMPLOS_LICENCIAS } from "@/lib/demo";
 import {
   DIA_MS,
   avisoVista,
@@ -238,4 +238,20 @@ export async function precargarEjemplos(ahora: Date = new Date()): Promise<{ ins
   }
   invalidarCacheLicencias();
   return { insertadas, existentes: EJEMPLOS_LICENCIAS.length - insertadas };
+}
+
+/**
+ * Quita los ejemplos cargados con la precarga. Es idempotente.
+ *
+ * Borra solo las claves exactas de `EJEMPLOS_LICENCIAS` (las `APP-DEMO-…`),
+ * así que una clave real nunca se elimina desde aquí, ni siquiera si su app
+ * se llama «Demo …». Devuelve cuántas claves de ejemplo se eliminaron.
+ */
+export async function quitarEjemplos(): Promise<{ eliminadas: number }> {
+  const filas = await consulta<{ clave: string }>(
+    "delete from licencias where clave = any($1::text[]) returning clave",
+    [CLAVES_EJEMPLO],
+  );
+  invalidarCacheLicencias();
+  return { eliminadas: filas.length };
 }

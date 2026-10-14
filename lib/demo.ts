@@ -20,6 +20,9 @@ export const EJEMPLOS_LICENCIAS: EjemploLicencia[] = [
   { nombre_app: "Demo Norte", clave: "APP-DEMO-NRTE-0033", estado: "ACTIVA", diasActiva: 33, dispositivo_id: "demo-pc-33" },
 ];
 
+/** Claves exactas de la precarga: quitar ejemplos solo borra estas, nunca claves reales. */
+export const CLAVES_EJEMPLO: readonly string[] = EJEMPLOS_LICENCIAS.map((e) => e.clave);
+
 /** Casos rápidos para el probador del panel. */
 export const CASOS_PRUEBA = [
   { etiqueta: "Primer uso", clave: "APP-DEMO-ATLS-0001", nombre_app: "Demo Atlas", dispositivo_id: "equipo-nuevo-01" },
