@@ -11,6 +11,9 @@ Construido con **Next.js (App Router)**, **Tailwind CSS** y **Vercel Postgres**.
 - **Vencimiento:** al cumplir 32 días la clave pasa a `BLOQUEADA` y se niega el acceso.
 - **Avisos:** en el **día 27** («faltan 3 días para llegar a 30») y en el **día 29** («falta 1 día para llegar a 30»).
 - **Bloqueo manual:** desde el panel se puede revocar cualquier clave.
+- **Eliminar:** el panel también puede borrar una clave por completo (útil para pruebas o
+  cargas por error). A diferencia del bloqueo, no conserva el registro: la clave desaparece
+  y la validación responde `NO_EXISTE`.
 
 ## Despliegue en Vercel
 
@@ -90,6 +93,15 @@ Responde además:
 { "id": 12 }
 ```
 
+### `POST /api/admin/eliminar` (admin)
+
+```json
+{ "id": 12 }
+```
+
+Borra la licencia de la base de datos, sin vuelta atrás (el panel pide confirmación antes).
+Responde `404` si esa licencia ya no existe. El bloqueo, en cambio, conserva el registro.
+
 ### `POST /api/admin/precarga` (admin)
 
 Carga claves de ejemplo (`Demo …`). Es idempotente.
@@ -144,7 +156,7 @@ Tres capas, cada una con su motivo:
 1. **Memoria del servidor (2,5 s)** — `lib/cache.ts` + `lib/licencias-db.ts`. El panel
    se refresca solo cada 5 s y puede haber varias sesiones abiertas: las peticiones
    simultáneas comparten una única consulta a Postgres. Cualquier escritura
-   (`generar`, `bloquear`, `precarga` y las activaciones/cierres de la validación)
+   (`generar`, `bloquear`, `eliminar`, `precarga` y las activaciones/cierres de la validación)
    invalida la entrada, así que nunca se muestra algo anterior a un cambio propio.
 2. **HTTP con `ETag` + `304`** — el sondeo revalida y, si nada cambió, la respuesta
    viaja sin cuerpo (`x-kg-cache` permite observarlo).
@@ -207,9 +219,13 @@ Sistema coherente, reutilizable y accesible en `components/`:
 | Gestos | `lib/gestos.ts` | Aritmética pura: proporción 1,2 entre ejes, umbrales y velocidad. Probada en `tests/gestos.test.ts` |
 | Movimiento reducido | `app/globals.css` + `lib/hooks.ts` | `prefers-reduced-motion` desactiva animaciones decorativas y el scroll suave |
 
-Los datos, la lógica de negocio y las rutas no cambiaron: el trabajo de interfaz se apoya
-en las mismas respuestas de la API. Todo el panel se maneja con teclado, con toque y con
-mouse, y el estado nunca depende solo del color: cada estado lleva icono o texto.
+Cada fila de la tabla se puede copiar, **bloquear** (conserva el registro) y **eliminar**
+(borra la clave; pide confirmación y avisa de que es irreversible). El bloqueo es la acción
+habitual y va en tono neutro; eliminar es el único botón de peligro de la fila.
+
+La interfaz se apoya en las respuestas de la API y no duplica reglas de negocio. Todo el
+panel se maneja con teclado, con toque y con mouse, y el estado nunca depende solo del
+color: cada estado lleva icono o texto.
 
 ## Estructura
 

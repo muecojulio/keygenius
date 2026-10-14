@@ -2,6 +2,7 @@ import { esAdmin, mutacionAutorizada } from "@/lib/admin";
 import { json, leerJson, respuestaError } from "@/lib/http";
 import { bloquearLicencia } from "@/lib/licencias-db";
 import { dentroDelCupo, ipCliente } from "@/lib/limite";
+import { limpiarIdLicencia } from "@/lib/validaciones";
 
 export const dynamic = "force-dynamic";
 
@@ -17,8 +18,8 @@ export async function POST(request: Request) {
     }
 
     const body = await leerJson(request);
-    const id = typeof body.id === "number" ? body.id : Number(body.id);
-    if (!Number.isInteger(id) || id < 1) return json({ error: "Licencia no válida." }, 400);
+    const id = limpiarIdLicencia(body.id);
+    if (id === null) return json({ error: "Licencia no válida." }, 400);
 
     const licencia = await bloquearLicencia(id);
     if (!licencia) return json({ error: "No se encontró esa licencia." }, 404);
